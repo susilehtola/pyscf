@@ -412,6 +412,7 @@ int LIBXC_is_hybrid(int xc_id)
 {
         xc_func_type func;
         int hyb;
+        int i;
         if(xc_func_init(&func, xc_id, XC_UNPOLARIZED) != 0){
                 fprintf(stderr, "XC functional %d not found\n", xc_id);
                 exit(1);
@@ -431,7 +432,16 @@ int LIBXC_is_hybrid(int xc_id)
                         hyb = 0;
         }
 #else
-        hyb = (xc_hyb_type(&func) == XC_HYB_HYBRID);
+        hyb = 0;
+        for(i=0;i<func.hyb_number_terms;i++) {
+          switch(func.hyb_type[i]) {
+          case(XC_HYB_FOCK):
+          case(XC_HYB_ERF_SR):
+          case(XC_HYB_YUKAWA_SR):
+          case(XC_HYB_GAUSSIAN_SR):
+            hyb = 1;
+          }
+        }
 #endif
 
         xc_func_end(&func);
@@ -441,7 +451,7 @@ int LIBXC_is_hybrid(int xc_id)
 double LIBXC_hybrid_coeff(int xc_id)
 {
         xc_func_type func;
-        double factor;
+        double factor = 0.0;
         if(xc_func_init(&func, xc_id, XC_UNPOLARIZED) != 0){
                 fprintf(stderr, "XC functional %d not found\n", xc_id);
                 exit(1);
@@ -457,15 +467,16 @@ double LIBXC_hybrid_coeff(int xc_id)
                 case XC_FAMILY_HYB_MGGA:
                         factor = xc_hyb_exx_coef(&func);
                         break;
-                default:
-                        factor = 0;
         }
 
 #else
-        if(xc_hyb_type(&func) == XC_HYB_HYBRID)
-          factor = xc_hyb_exx_coef(&func);
-        else
-          factor = 0.0;
+        int i;
+        for(i=0;i<func.hyb_number_terms;i++) {
+          switch(func.hyb_type[i]) {
+          case(XC_HYB_FOCK):
+            factor = func.hyb_coeff[i];
+          }
+        }
 #endif
         
         xc_func_end(&func);
@@ -497,10 +508,21 @@ void LIBXC_rsh_coeff(int xc_id, double *rsh_pars) {
 #if XC_MAJOR_VERSION < 6
         XC(hyb_cam_coef)(&func, &rsh_pars[0], &rsh_pars[1], &rsh_pars[2]);
 #else
-        switch(xc_hyb_type(&func)) {
-        case(XC_HYB_HYBRID):
-        case(XC_HYB_CAM):
-          XC(hyb_cam_coef)(&func, &rsh_pars[0], &rsh_pars[1], &rsh_pars[2]);
+        int i;
+        for(i=0;i<func.hyb_number_terms;i++) {
+          switch(func.hyb_type[i]) {
+          case(XC_HYB_FOCK):
+            rsh_pars[1] = func.hyb_coeff[i];
+            break;
+
+          case(XC_HYB_ERF_SR):
+            /* Check that we only have one short-range component */
+            assert(rsh_pars[0] == 0.0);
+            assert(rsh_pars[2] == 0.0);
+            rsh_pars[0] = func.hyb_omega[i];
+            rsh_pars[2] = func.hyb_coeff[i];
+            break;
+          }
         }
 #endif
         xc_func_end(&func);
@@ -515,32 +537,56 @@ int LIBXC_is_cam_rsh(int xc_id) {
 #if XC_MAJOR_VERSION < 6
         int is_cam = func.info->flags & XC_FLAGS_HYB_CAM;
 #else
-        int is_cam = (xc_hyb_type(&func) == XC_HYB_CAM);
+        int i, is_cam = 0;
+        for(i=0;i<func.hyb_number_terms;i++) {
+          switch(func.hyb_type[i]) {
+          case(XC_HYB_ERF_SR):
+            is_cam=1;
+          }
+        }
 #endif
         xc_func_end(&func);
         return is_cam;
 }
 
-/*
- * XC_FAMILY_LDA           1
- * XC_FAMILY_GGA           2
- * XC_FAMILY_MGGA          4
- * XC_FAMILY_LCA           8
- * XC_FAMILY_OEP          16
- * XC_FAMILY_HYB_GGA      32
- * XC_FAMILY_HYB_MGGA     64
- * XC_FAMILY_HYB_LDA     128
- */
-int LIBXC_xc_type(int fn_id)
-{
+double LIBXC_mp2_coeff(int xc_id, double *rsh_pars) {
+
         xc_func_type func;
-        if (xc_func_init(&func, fn_id, 1) != 0) {
-                fprintf(stderr, "XC functional %d not found\n", fn_id);
+        if(xc_func_init(&func, xc_id, XC_UNPOLARIZED) != 0){
+                fprintf(stderr, "XC functional %d not found\n", xc_id);
                 exit(1);
         }
-        int type = func.info->family;
+        double mp2 = 0.0;
+        int i;
+#if XC_MAJOR_VERSION >= 6
+        for(i=0;i<func.hyb_number_terms;i++) {
+          if(func.hyb_type[i] == XC_HYB_PT2) {
+            assert(mp2 == 0.0);
+            mp2 = func.hyb_coeff[i];
+          }
+        }
+#endif
         xc_func_end(&func);
-        return type;
+        return mp2;
+}
+
+int LIBXC_is_double_hybrid(int xc_id) {
+        xc_func_type func;
+        if(xc_func_init(&func, xc_id, XC_UNPOLARIZED) != 0){
+                fprintf(stderr, "XC functional %d not found\n", xc_id);
+                exit(1);
+        }
+        int is_dh = 0;
+#if XC_MAJOR_VERSION >= 6
+        int i;
+        for(i=0;i<func.hyb_number_terms;i++) {
+          if(func.hyb_type[i] == XC_HYB_PT2) {
+            is_dh = 1;
+          }
+        }
+#endif
+        xc_func_end(&func);
+        return is_dh;
 }
 
 static int xc_output_length(int nvar, int deriv)

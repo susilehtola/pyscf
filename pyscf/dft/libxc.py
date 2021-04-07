@@ -50,6 +50,12 @@ _itrf.LIBXC_hybrid_coeff.restype = ctypes.c_double
 _itrf.LIBXC_nlc_coeff.argtypes = [ctypes.c_int,ctypes.POINTER(ctypes.c_double)]
 _itrf.LIBXC_rsh_coeff.argtypes = [ctypes.c_int,ctypes.POINTER(ctypes.c_double)]
 
+# Double hybrids
+_itrf.LIBXC_is_double_hybrid.restype = ctypes.c_int
+_itrf.LIBXC_is_double_hybrid.argtypes = [ctypes.c_int]
+_itrf.LIBXC_mp2_coeff.restype = ctypes.c_double
+_itrf.LIBXC_mp2_coeff.argtypes = [ctypes.c_int]
+
 # Runtime detection of available functionals
 dynamic_func = getattr(__config__, 'dft_libxc_dynamic', False)
 
@@ -982,6 +988,15 @@ def rsh_coeff(xc_code):
         rsh_pars[1] += rsh_tmp[1] * fac
         rsh_pars[2] += rsh_tmp[2] * fac
     return rsh_pars
+
+def mp2_coeff(xc_code):
+    '''Get MP2 coefficients
+    '''
+    hyb, fn_facs = parse_xc(xc_code)
+    mp2_c = 0.0
+    for xid, fac in fn_facs:
+        mp2_c += fac*_itrf.LIBXC_mp2_coeff(xid)
+    return mp2_c
 
 def parse_xc_name(xc_name='LDA,VWN'):
     '''Convert the XC functional name to libxc library internal ID.

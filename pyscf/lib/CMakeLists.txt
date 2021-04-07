@@ -156,21 +156,24 @@ add_subdirectory(dft)
 #if(NOT EXISTS "${PROJECT_SOURCE_DIR}/deps/include/xc.h" AND
 #    ENABLE_LIBXC AND BUILD_LIBXC)
 if(ENABLE_LIBXC AND BUILD_LIBXC)
-  ExternalProject_Add(libxc
-    #GIT_REPOSITORY https://gitlab.com/libxc/libxc.git
-    #GIT_TAG master
-    URL https://gitlab.com/libxc/libxc/-/archive/5.1.2/libxc-5.1.2.tar.gz
-    PREFIX ${PROJECT_BINARY_DIR}/deps
-    INSTALL_DIR ${PROJECT_SOURCE_DIR}/deps
+  if(0)
+    ExternalProject_Add(libxc
+      GIT_REPOSITORY https://gitlab.com/libxc/libxc.git
+      GIT_TAG master
+      #URL https://gitlab.com/libxc/libxc/-/archive/5.1.2/libxc-5.1.2.tar.gz
+      PREFIX ${PROJECT_BINARY_DIR}/deps
+      INSTALL_DIR ${PROJECT_SOURCE_DIR}/deps
     CMAKE_ARGS -DCMAKE_BUILD_TYPE=RELEASE -DBUILD_SHARED_LIBS=1
             -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
             -DCMAKE_INSTALL_LIBDIR:PATH=lib
             -DENABLE_FORTRAN=0 -DDISABLE_KXC=0 -DDISABLE_LXC=1
             -DCMAKE_C_CREATE_SHARED_LIBRARY=${C_LINK_TEMPLATE}
   )
-  add_dependencies(xc_itrf libxc)
-  add_dependencies(dft libxc)
+add_dependencies(xc_itrf libxc)
+add_dependencies(dft libxc)
+endif()
 endif() # ENABLE_LIBXC
+
 
 #if(NOT EXISTS "${PROJECT_SOURCE_DIR}/deps/include/xcfun.h" AND
 #    ENABLE_XCFUN AND BUILD_XCFUN)

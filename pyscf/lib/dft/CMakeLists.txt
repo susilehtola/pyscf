@@ -32,7 +32,10 @@ set_target_properties(xc_itrf PROPERTIES
   LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}
   COMPILE_FLAGS ${OpenMP_C_FLAGS}
   LINK_FLAGS ${OpenMP_C_FLAGS})
-target_link_libraries(xc_itrf xc)
+  INCLUDE_DIRECTORIES("/home/work/libxc/install/include/")
+  LINK_DIRECTORIES("/home/work/libxc/install/lib/")
+  #  target_link_libraries(xc_itrf xc)
+    target_link_libraries(xc_itrf /home/work/libxc/install/lib/libxc.so)
 endif()
 
 if(ENABLE_XCFUN)
