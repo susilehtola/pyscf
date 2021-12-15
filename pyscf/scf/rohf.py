@@ -199,8 +199,14 @@ def get_grad(mo_coeff, mo_occ, fock):
     [ oc oo ov ]
     [ vc vo vv ]
     '''
-    occidxa = mo_occ > 0
-    occidxb = mo_occ == 2
+    if isinstance(mo_occ, numpy.ndarray) and mo_occ.ndim == 1:
+        mo_occa = mo_occ > 0
+        mo_occb = mo_occ == 2
+    else:
+        mo_occa, mo_occb = mo_occ
+
+    occidxa = mo_occa > 0
+    occidxb = mo_occb > 0
     viridxa = ~occidxa
     viridxb = ~occidxb
     uniq_var_a = viridxa.reshape(-1,1) & occidxa
